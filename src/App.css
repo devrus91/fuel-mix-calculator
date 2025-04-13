@@ -36,3 +36,34 @@
     transform: rotate(360deg);
   }
 }
+
+.App {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin: 20px;
+}
+
+.input-group {
+  margin: 15px 0;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input {
+  width: 200px;
+  padding: 8px;
+  font-size: 16px;
+}
+
+.result {
+  margin-top: 20px;
+  font-size: 18px;
+}
+
+strong {
+  color: green;
+}
