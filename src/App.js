@@ -115,14 +115,33 @@ function App() {
         // Объем воды в разбавленном спирте
         const waterVolume = ethanolToAdd * ((100 - ethanolPurity) / 100);
 
-        // Общий объем топлива с учетом плотности
-        const totalFuelMass =
-            pureFuel * fuelDensity + // Масса чистого топлива
-            ethanolToAddRaw * ethanolDensity + // Масса этанола
-            waterVolume * waterDensity + // Масса воды
-            (fuel * additives / 100) * fuelDensity; // Масса присадок
+        // Масса компонентов
+        const pureFuelMass = pureFuel * fuelDensity; // Масса чистого топлива
+        const ethanolMass = ethanolToAddRaw * ethanolDensity; // Масса этанола
+        const waterMass = waterVolume * waterDensity; // Масса воды
+        const additivesMass = (fuel * additives / 100) * fuelDensity; // Масса присадок
 
-        const totalFuelVolume = totalFuelMass / fuelDensity; // Пересчет в объем
+        // Общая масса смеси
+        const totalMass = pureFuelMass + ethanolMass + waterMass + additivesMass;
+
+        // Расчет средней плотности смеси
+        const ethanolFraction = ethanolMass / totalMass; // Доля этанола
+        const waterFraction = waterMass / totalMass; // Доля воды
+        const fuelFraction = pureFuelMass / totalMass; // Доля бензина
+        const additivesFraction = additivesMass / totalMass; // Доля присадок
+
+        const averageDensity =
+            ethanolFraction * ethanolDensity +
+            waterFraction * waterDensity +
+            fuelFraction * fuelDensity +
+            additivesFraction * fuelDensity;
+
+        // Расчет контракции объема
+        const contractionFactor = 0.97; // Коэффициент контракции (примерное значение)
+
+        // Общий объем топлива с учетом средней плотности и контракции
+        const totalFuelVolume = (totalMass / averageDensity) * contractionFactor;
+
 
         setEthanolResult(ethanolToAdd.toFixed(2)); // Устанавливаем результат
         setTotalVolume(totalFuelVolume.toFixed(2)); // Устанавливаем общий объем
@@ -344,6 +363,11 @@ function App() {
                     <li>
                         <Typography variant="body1">
                             Присадки учитываются как часть массы топлива.
+                        </Typography>
+                    </li>
+                    <li>
+                        <Typography variant="body1">
+                            Учитывается контракция объема при смешивании жидкостей (коэффициент контракции ~0.97).
                         </Typography>
                     </li>
                 </ul>
