@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, {useEffect, useState} from "react";
 import {
     ThemeProvider,
     createTheme,
@@ -10,12 +10,7 @@ import {
     Paper,
     Grid,
     Alert,
-    Slider,
-    Popover,
-    IconButton,
-    Tooltip,
 } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 function App() {
     // Состояние для темы (оставляем только темную тему)
@@ -32,140 +27,179 @@ function App() {
     });
 
     const savedValues = JSON.parse(localStorage.getItem("inputValues")) || {
-        fuel: 0,
-        additives: 0,
-        currentMix: 0,
-        targetMix: 0,
+        initialVolume: 0,
+        currentEthanolPercent: 0,
+        targetVolume: 0,
+        targetEthanolPercent: 0,
         ethanolPurity: 96, // Начальное значение чистоты спирта (96%)
+        additivesPercent: 0
     };
+
     // Состояния для входных данных
-    const [fuel, setFuel] = useState(savedValues.fuel);
-    const [additives, setAdditives] = useState(savedValues.additives);
-    const [currentMix, setCurrentMix] = useState(savedValues.currentMix);
-    const [targetMix, setTargetMix] = useState(savedValues.targetMix);
-    const [ethanolPurity, setEthanolPurity] = useState(savedValues.ethanolPurity);
+    const [initialVolume, setInitialVolume] = useState(savedValues.initialVolume); // Исходный объем смеси
+    const [currentEthanolPercent, setCurrentEthanolPercent] = useState(savedValues.currentEthanolPercent); // Текущая концентрация этанола
+    const [targetVolume, setTargetVolume] = useState(savedValues.targetVolume); // Итоговый объем смеси (необязательный)
+    const [targetEthanolPercent, setTargetEthanolPercent] = useState(savedValues.targetEthanolPercent); // Целевая концентрация этанола
+    const [ethanolPurity, setEthanolPurity] = useState(savedValues.ethanolPurity); // Чистота спирта
+    const [additivesPercent, setAdditivesPercent] = useState(savedValues.additivesPercent); // Процент присадок
 
     // Состояние для ошибок
     const [error, setError] = useState("");
-    const [ethanolResult, setEthanolResult] = useState(null);
-    const [totalVolume, setTotalVolume] = useState(null);
+    const [result, setResult] = useState(null);
+
 
     useEffect(() => {
         localStorage.setItem(
             "inputValues",
-            JSON.stringify({ fuel, additives, currentMix, targetMix, ethanolPurity })
+            JSON.stringify({ initialVolume, currentEthanolPercent, targetVolume, targetEthanolPercent, ethanolPurity, additivesPercent })
         );
-    }, [fuel, additives, currentMix, targetMix, ethanolPurity]);
+    }, [initialVolume, currentEthanolPercent, targetVolume, targetEthanolPercent, ethanolPurity, additivesPercent]);
     
-    // Состояние для Popover
-    const [anchorEl, setAnchorEl] = useState(null);
-
-    // Функция для открытия Popover
-    const handleInfoClick = (event) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    // Функция для закрытия Popover
-    const handleClose = () => {
-        setAnchorEl(null);
-    };
-
-    // Функция для расчета количества этанола и общего объема
+    // Функция для расчета добавляемых компонентов
     const calculateResults = () => {
-        if (fuel < 0) {
-            setError("Объем топлива должен быть положительными.");
+        // Преобразуем строки в числа
+        const initialVol = parseFloat(initialVolume);
+        const currentEthanol = parseFloat(currentEthanolPercent);
+        const targetVol = parseFloat(targetVolume);
+        const targetEthanol = parseFloat(targetEthanolPercent);
+        const ethanolPure = parseFloat(ethanolPurity);
+        const additives = parseFloat(additivesPercent);
+
+        // Проверка на корректность ввода
+        if (
+            isNaN(initialVol) ||
+            isNaN(currentEthanol) ||
+            isNaN(targetEthanol) ||
+            isNaN(ethanolPure) ||
+            isNaN(additives)
+        ) {
+            setError("Все значения должны быть заполнены.");
+            setResult(null);
             return;
         }
-        if (additives < 0) {
-            setError("Присадки должны быть положительными.");
+        if (
+            initialVol <= 0 ||
+            currentEthanol < 0 ||
+            targetEthanol < 0 ||
+            ethanolPure <= 0 ||
+            additives < 0
+        ) {
+            setError("Все значения должны быть положительными.");
+            setResult(null);
             return;
         }
-        if (currentMix < 0) {
-            setError("Текущее содержание этанола должно быть положительными.");
-            return;
-        }
-        if (targetMix < 0) {
-            setError("Целевое содержание этанола должно быть положительными.");
-            return;
-        }
-        if (additives > 100 || currentMix > 100 || targetMix > 100) {
+        if (
+            currentEthanol > 100 ||
+            targetEthanol > 100 ||
+            ethanolPure > 100 ||
+            additives > 100
+        ) {
             setError("Значения процентов не могут превышать 100.");
+            setResult(null);
             return;
         }
-        if (targetMix < currentMix) {
-            setError("Целевое содержание этанола должно быть больше текущего.");
-            return;
+
+        setError(""); // Очищаем ошибку, если данные корректны
+
+        // Если итоговый объем указан
+        if (!isNaN(targetVol)) {
+            const fuelFactor = (100 + additives) / 100 + (200 - ethanolPure) / 100 * targetEthanol / (100 - targetEthanol);
+            const targetPureFuelVolume = targetVol / fuelFactor;
+            
+            const targetPureEthanolVolume = targetEthanol * targetPureFuelVolume/(100 - targetEthanol) ;
+            
+            const targetFuelVolume =  targetPureFuelVolume * 100 / (100 - additives);
+
+            const targetEthanolVolume =  targetPureEthanolVolume * 100 / ethanolPure;
+
+          
+            
+            // Исходные объемы этанола и бензина
+            const initialPureFuelVolume = initialVol / ((100+additives)/100+ (200 - ethanolPure)/100 * currentEthanol /(100 - currentEthanol) );
+            const initialPureEthanolVolume = currentEthanol * initialPureFuelVolume / (100 - currentEthanol);
+
+            const initialFuelVolume =  initialPureFuelVolume * 100 / (100 - additives);
+
+            const initialEthanolVolume =  initialPureEthanolVolume * 100 / ethanolPure;
+
+            // Необходимый объем этанола для добавления
+            const ethanolToAddVolume = targetEthanolVolume - initialEthanolVolume;
+
+           
+            // Объем бензина для добавления
+            const fuelToAddVolume = targetFuelVolume - initialFuelVolume;
+            
+            // Проверка на отрицательный объем
+            if (fuelToAddVolume < 0 || ethanolToAddVolume < 0) {
+                setError(
+                    "Невозможно достичь целевого объема с заданными параметрами. Уменьшите процент присадок или измените другие параметры."
+                );
+                setResult(null);
+                return;
+            }
+
+            // Результаты
+            setResult({
+                ethanolToAddVolume: ethanolToAddVolume.toFixed(2),
+                fuelToAddVolume: fuelToAddVolume.toFixed(2),
+            });
+        } else {
+            // Если итоговый объем не указан
+            if (targetEthanol > currentEthanol) {
+                // Повышение концентрации этанола -> добавляем спирт
+                const ethanolNeededMass =
+                    (initialVol * (targetEthanol - currentEthanol)) /
+                    (100 - targetEthanol);
+                const ethanolToAddVolume =
+                    ethanolNeededMass / ((ethanolPure / 100) * 0.789); // Плотность этанола ~0.789
+
+                setResult({
+                    ethanolToAddVolume: ethanolToAddVolume.toFixed(2),
+                    fuelToAddVolume: "0.00", // Бензин не добавляется
+                });
+            } else if (targetEthanol < currentEthanol) {
+                // Понижение концентрации этанола -> добавляем бензин
+                const pureFuelToAddVolume =
+                    (initialVol * (currentEthanol - targetEthanol)) / targetEthanol;
+
+                const fuelToAddVolume = pureFuelToAddVolume * 100 / (100 - additives);
+                setResult({
+                    ethanolToAddVolume: "0.00", // Спирт не добавляется
+                    fuelToAddVolume: fuelToAddVolume.toFixed(2),
+                });
+            } else {
+                // Концентрация не меняется
+                setResult({
+                    ethanolToAddVolume: "0.00",
+                    fuelToAddVolume: "0.00",
+                });
+            }
         }
-        setError(""); // Очищаем ошибку, если данные корректны// Очищаем ошибку, если данные корректны
-
-        // Плотность этанола (кг/л), бензина (кг/л) и воды (кг/л)
-        const ethanolDensity = 0.789; // Плотность этанола
-        const fuelDensity = 0.74; // Плотность бензина
-        const waterDensity = 1.0; // Плотность воды
-
-        // Объем чистого топлива
-        const pureFuel =
-            fuel * (1 - additives / 100 - currentMix / 100); // Чистый объем топлива
-
-        // Количество этанола для добавления (с учетом чистоты спирта)
-        const ethanolToAddRaw =
-            (pureFuel * (targetMix / 100 - currentMix / 100)) / (1 - targetMix / 100);
-        const ethanolToAdd = ethanolToAddRaw / (ethanolPurity / 100); // Учитываем чистоту спирта
-
-        // Объем воды в разбавленном спирте
-        const waterVolume = ethanolToAdd * ((100 - ethanolPurity) / 100);
-
-        // Масса компонентов
-        const pureFuelMass = pureFuel * fuelDensity; // Масса чистого топлива
-        const ethanolMass = ethanolToAddRaw * ethanolDensity; // Масса этанола
-        const waterMass = waterVolume * waterDensity; // Масса воды
-        const additivesMass = (fuel * additives / 100) * fuelDensity; // Масса присадок
-
-        // Общая масса смеси
-        const totalMass = pureFuelMass + ethanolMass + waterMass + additivesMass;
-
-        // Расчет средней плотности смеси
-        const ethanolFraction = ethanolMass / totalMass; // Доля этанола
-        const waterFraction = waterMass / totalMass; // Доля воды
-        const fuelFraction = pureFuelMass / totalMass; // Доля бензина
-        const additivesFraction = additivesMass / totalMass; // Доля присадок
-
-        const averageDensity =
-            ethanolFraction * ethanolDensity +
-            waterFraction * waterDensity +
-            fuelFraction * fuelDensity +
-            additivesFraction * fuelDensity;
-
-        // Расчет контракции объема
-        const contractionFactor = 0.97; // Коэффициент контракции (примерное значение)
-
-        // Общий объем топлива с учетом средней плотности и контракции
-        const totalFuelVolume = (totalMass / averageDensity) * contractionFactor;
-
-
-        setEthanolResult(ethanolToAdd.toFixed(2)); // Устанавливаем результат
-        setTotalVolume(totalFuelVolume.toFixed(2)); // Устанавливаем общий объем
     };
-
-    // Вызываем calculateResults только при изменении входных данных
+   
     useEffect(() => {
         calculateResults();
-    }, [fuel, additives, currentMix, targetMix, ethanolPurity]);
-    
+    }, [initialVolume, currentEthanolPercent, targetVolume, targetEthanolPercent, ethanolPurity, additivesPercent]);
     return (
         <ThemeProvider theme={theme}>
             {/* CssBaseline обеспечивает базовые стили для темы */}
             <CssBaseline />
-            <Container sx={{ mt: 5,
-                backgroundColor: theme.palette.secondary.main,
-                color: theme.palette.primary.main,}}>
-               
+            <Container  sx={{ mt: 5 }}>
+                <Paper
+                    elevation={3}
+                    sx={{
+                        p: 4,
+                        borderRadius: 8,
+                        backgroundColor: theme.palette.secondary.main,
+                        color: theme.palette.primary.main,
+                    }}
+                >
                     <Box textAlign="center" mb={3}>
                         <Typography variant="h4" gutterBottom>
-                            Калькулятор этанола
+                            Калькулятор смеси этанола и бензина
                         </Typography>
                         <Typography variant="subtitle1" color="text.secondary">
-                            Рассчитайте количество этанола и общий объем топлива
+                            Рассчитайте количество бензина и спирта для получения целевой смеси
                         </Typography>
                     </Box>
 
@@ -180,80 +214,32 @@ function App() {
                     <Grid container spacing={2}>
                         {/* Левая часть формы */}
                         <Grid item size={{ xs: 12, md:12}}>
-                            <Typography variant="h6">Параметры топлива</Typography>
+                            <Typography variant="h6">Исходные параметры</Typography>
 
-                            {/* Объем топлива (поле ввода) */}
+                            {/* Исходный объем смеси */}
                             <Box mt={2}>
-                                <Typography variant="body1">Объем топлива (л)</Typography>
+                                <Typography variant="body1">Исходный объем смеси (л)</Typography>
                                 <TextField
                                     fullWidth
                                     type="number"
-                                    value={fuel}
-                                    onChange={(e) => setFuel(parseFloat(e.target.value))}
+                                    value={initialVolume}
+                                    onChange={(e) => setInitialVolume(e.target.value)}
                                     InputProps={{
                                         endAdornment: <Typography ml={1}>л</Typography>,
                                     }}
-                                    sx={{
-                                        "& .MuiOutlinedInput-root": {
-                                            borderRadius: 0, // Убираем скругления углов
-                                        },
-                                    }}
                                 />
                             </Box>
 
-                            {/* Присадки */}
+                            {/* Текущая концентрация этанола */}
                             <Box mt={2}>
-                                <Typography variant="body1">Присадки (%)</Typography>
+                                <Typography variant="body1">Текущая концентрация этанола (%)</Typography>
                                 <TextField
                                     fullWidth
                                     type="number"
-                                    value={additives}
-                                    onChange={(e) => setAdditives(parseFloat(e.target.value))}
+                                    value={currentEthanolPercent}
+                                    onChange={(e) => setCurrentEthanolPercent(e.target.value)}
                                     InputProps={{
                                         endAdornment: <Typography ml={1}>%</Typography>,
-                                    }}
-                                    sx={{
-                                        "& .MuiOutlinedInput-root": {
-                                            borderRadius: 0, // Убираем скругления углов
-                                        },
-                                    }}
-                                />
-                            </Box>
-
-                            {/* Текущее содержание этанола */}
-                            <Box mt={2}>
-                                <Typography variant="body1">Текущее содержание этанола (%)</Typography>
-                                <TextField
-                                    fullWidth
-                                    type="number"
-                                    value={currentMix}
-                                    onChange={(e) => setCurrentMix(parseFloat(e.target.value))}
-                                    InputProps={{
-                                        endAdornment: <Typography ml={1}>%</Typography>,
-                                    }}
-                                    sx={{
-                                        "& .MuiOutlinedInput-root": {
-                                            borderRadius: 0, // Убираем скругления углов
-                                        },
-                                    }}
-                                />
-                            </Box>
-
-                            {/* Целевое содержание этанола */}
-                            <Box mt={2}>
-                                <Typography variant="body1">Целевое содержание этанола (%)</Typography>
-                                <TextField
-                                    fullWidth
-                                    type="number"
-                                    value={targetMix}
-                                    onChange={(e) => setTargetMix(parseFloat(e.target.value))}
-                                    InputProps={{
-                                        endAdornment: <Typography ml={1}>%</Typography>,
-                                    }}
-                                    sx={{
-                                        "& .MuiOutlinedInput-root": {
-                                            borderRadius: 0, // Убираем скругления углов
-                                        },
                                     }}
                                 />
                             </Box>
@@ -265,14 +251,23 @@ function App() {
                                     fullWidth
                                     type="number"
                                     value={ethanolPurity}
-                                    onChange={(e) => setEthanolPurity(parseFloat(e.target.value))}
+                                    onChange={(e) => setEthanolPurity(e.target.value)}
                                     InputProps={{
                                         endAdornment: <Typography ml={1}>%</Typography>,
                                     }}
-                                    sx={{
-                                        "& .MuiOutlinedInput-root": {
-                                            borderRadius: 0, // Убираем скругления углов
-                                        },
+                                />
+                            </Box>
+
+                            {/* Присадки */}
+                            <Box mt={2}>
+                                <Typography variant="body1">Присадки (%)</Typography>
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    value={additivesPercent}
+                                    onChange={(e) => setAdditivesPercent(e.target.value)}
+                                    InputProps={{
+                                        endAdornment: <Typography ml={1}>%</Typography>,
                                     }}
                                 />
                             </Box>
@@ -280,98 +275,60 @@ function App() {
 
                         {/* Правая часть формы */}
                         <Grid item size={{ xs: 12, md:12}}>
-                            <Typography variant="h4" >
-                                Необходимо добавить:{" "}
-                                <strong>{ethanolResult !== null ? ethanolResult : "-"}</strong> литров этанола.
-                            </Typography>
+                            <Typography variant="h6">Целевые параметры</Typography>
 
-                            <Box mt={3}>
-                                
-
-                                {/* Общий объем топлива */}
-                                <Box display="flex" alignItems="center" mt={2}>
-                                    <Typography variant="h6">Общий объем топлива</Typography>
-                                    <IconButton
-                                        size="small"
-                                        onClick={handleInfoClick}
-                                        sx={{ ml: 1 }}
-                                    >
-                                        <Tooltip title="Информация о расчете">
-                                            <InfoOutlinedIcon fontSize="small" />
-                                        </Tooltip>
-                                    </IconButton>
-                                </Box>
+                            {/* Итоговый объем смеси (необязательный) */}
+                            <Box mt={2}>
                                 <Typography variant="body1">
-                                    {totalVolume !== null ? `${totalVolume} л` : "-"}
+                                    Итоговый объем смеси (л) (необязательно)
                                 </Typography>
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    value={targetVolume}
+                                    onChange={(e) => setTargetVolume(e.target.value)}
+                                    InputProps={{
+                                        endAdornment: <Typography ml={1}>л</Typography>,
+                                    }}
+                                />
+                            </Box>
+
+                            {/* Целевая концентрация этанола */}
+                            <Box mt={2}>
+                                <Typography variant="body1">Целевая концентрация этанола (%)</Typography>
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    value={targetEthanolPercent}
+                                    onChange={(e) => setTargetEthanolPercent(e.target.value)}
+                                    InputProps={{
+                                        endAdornment: <Typography ml={1}>%</Typography>,
+                                    }}
+                                />
                             </Box>
                         </Grid>
                     </Grid>
-                
-            </Container>
 
-            {/* Popover с информацией */}
-            <Popover
-                open={Boolean(anchorEl)}
-                anchorEl={anchorEl}
-                onClose={handleClose}
-                anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "left",
-                }}
-                transformOrigin={{
-                    vertical: "top",
-                    horizontal: "left",
-                }}
-                PaperProps={{
-                    sx: {
-                        backgroundColor: theme.palette.secondary.main,
-                        color: theme.palette.primary.main,
-                        p: 2,
-                        borderRadius: 2,
-                    },
-                }}
-            >
-                <Typography variant="h6" gutterBottom>
-                    Расчет общего объема топлива
-                </Typography>
-                <Typography variant="body1">
-                    Общий объем топлива рассчитывается с учетом следующих факторов:
-                </Typography>
-                <ul>
-                    <li>
-                        <Typography variant="body1">
-                            Плотность бензина: 0.74 кг/л.
-                        </Typography>
-                    </li>
-                    <li>
-                        <Typography variant="body1">
-                            Плотность этанола: 0.789 кг/л.
-                        </Typography>
-                    </li>
-                    <li>
-                        <Typography variant="body1">
-                            Плотность воды: 1.0 кг/л.
-                        </Typography>
-                    </li>
-                    <li>
-                        <Typography variant="body1">
-                            При использовании разбавленного спирта учитывается его чистота
-                            (например, 96% спирт содержит 4% воды).
-                        </Typography>
-                    </li>
-                    <li>
-                        <Typography variant="body1">
-                            Присадки учитываются как часть массы топлива.
-                        </Typography>
-                    </li>
-                    <li>
-                        <Typography variant="body1">
-                            Учитывается контракция объема при смешивании жидкостей (коэффициент контракции ~0.97).
-                        </Typography>
-                    </li>
-                </ul>
-            </Popover>
+                    {/* Отображение результатов */}
+                    {result && (
+                        <Box mt={3}>
+                            <Typography variant="h6">Результат:</Typography>
+                            {result.ethanolToAddVolume && (
+                                <Typography variant="body1">
+                                    Необходимо добавить:{" "}
+                                    <strong>{result.ethanolToAddVolume} л</strong> спирта.
+                                </Typography>
+                            )}
+                            {result.fuelToAddVolume && (
+                                <Typography variant="body1">
+                                    Необходимо добавить:{" "}
+                                    <strong>{result.fuelToAddVolume} л</strong> бензина.
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
+                </Paper>
+            </Container>
         </ThemeProvider>
     );
 }
