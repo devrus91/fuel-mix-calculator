@@ -11,6 +11,7 @@ import {
     Grid,
     Alert,
 } from "@mui/material";
+import Decimal from "decimal.js";
 
 function App() {
     // Состояние для темы (оставляем только темную тему)
@@ -20,8 +21,20 @@ function App() {
             primary: {
                 main: "#00e0ff", // Голубой цвет для текста
             },
-            secondary: {
-                main: "#2c3e50", // Темно-синий фон
+            background: {
+                default: "#2c3e50", // Темно-синий фон всей страницы
+                paper: "#2c3e50", // Цвет Paper такой же, как фон страницы
+            },
+        },
+        components: {
+            MuiPaper: {
+                styleOverrides: {
+                    root: {
+                        backgroundColor: "#2c3e50", // Цвет Paper
+                        color: "#ffffff", // Белый текст
+                        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.5)", // Тень для Paper
+                    },
+                },
             },
         },
     });
@@ -47,151 +60,199 @@ function App() {
     const [error, setError] = useState("");
     const [result, setResult] = useState(null);
 
+    Decimal.set({rounding: Decimal.ROUND_HALF_EVEN});
 
     useEffect(() => {
         localStorage.setItem(
             "inputValues",
-            JSON.stringify({ initialVolume, currentEthanolPercent, targetVolume, targetEthanolPercent, ethanolPurity, additivesPercent })
+            JSON.stringify({
+                initialVolume,
+                currentEthanolPercent,
+                targetVolume,
+                targetEthanolPercent,
+                ethanolPurity,
+                additivesPercent
+            })
         );
     }, [initialVolume, currentEthanolPercent, targetVolume, targetEthanolPercent, ethanolPurity, additivesPercent]);
-    
-    // Функция для расчета добавляемых компонентов
-    const calculateResults = () => {
-        // Преобразуем строки в числа
-        const initialVol = parseFloat(initialVolume);
-        const currentEthanol = parseFloat(currentEthanolPercent);
-        const targetVol = parseFloat(targetVolume);
-        const targetEthanol = parseFloat(targetEthanolPercent);
-        const ethanolPure = parseFloat(ethanolPurity);
-        const additives = parseFloat(additivesPercent);
 
-        // Проверка на корректность ввода
-        if (
-            isNaN(initialVol) ||
-            isNaN(currentEthanol) ||
-            isNaN(targetEthanol) ||
-            isNaN(ethanolPure) ||
-            isNaN(additives)
-        ) {
-            setError("Все значения должны быть заполнены.");
-            setResult(null);
-            return;
-        }
-        if (
-            initialVol <= 0 ||
-            currentEthanol < 0 ||
-            targetEthanol < 0 ||
-            ethanolPure <= 0 ||
-            additives < 0
-        ) {
-            setError("Все значения должны быть положительными.");
-            setResult(null);
-            return;
-        }
-        if (
-            currentEthanol > 100 ||
-            targetEthanol > 100 ||
-            ethanolPure > 100 ||
-            additives > 100
-        ) {
-            setError("Значения процентов не могут превышать 100.");
-            setResult(null);
-            return;
-        }
 
-        setError(""); // Очищаем ошибку, если данные корректны
+    useEffect(() => {
+        // Функция для расчета добавляемых компонентов
+        const calculateResults = () => {
+            // Преобразуем строки в числа
+            const initialVol = new Decimal(initialVolume || 0);
+            const currentEthanol = new Decimal(currentEthanolPercent || 0);
+            const targetVol = new Decimal(targetVolume || 0);
+            const targetEthanol = new Decimal(targetEthanolPercent || 0);
+            const ethanolPure = new Decimal(ethanolPurity || 0);
+            const additives = new Decimal(additivesPercent || 0);
 
-        // Если итоговый объем указан
-        if (!isNaN(targetVol)) {
-            const fuelFactor = (100 + additives) / 100 + (200 - ethanolPure) / 100 * targetEthanol / (100 - targetEthanol);
-            const targetPureFuelVolume = targetVol / fuelFactor;
-            
-            const targetPureEthanolVolume = targetEthanol * targetPureFuelVolume/(100 - targetEthanol) ;
-            
-            const targetFuelVolume =  targetPureFuelVolume * 100 / (100 - additives);
-
-            const targetEthanolVolume =  targetPureEthanolVolume * 100 / ethanolPure;
-
-          
-            
-            // Исходные объемы этанола и бензина
-            const initialPureFuelVolume = initialVol / ((100+additives)/100+ (200 - ethanolPure)/100 * currentEthanol /(100 - currentEthanol) );
-            const initialPureEthanolVolume = currentEthanol * initialPureFuelVolume / (100 - currentEthanol);
-
-            const initialFuelVolume =  initialPureFuelVolume * 100 / (100 - additives);
-
-            const initialEthanolVolume =  initialPureEthanolVolume * 100 / ethanolPure;
-
-            // Необходимый объем этанола для добавления
-            const ethanolToAddVolume = targetEthanolVolume - initialEthanolVolume;
-
-           
-            // Объем бензина для добавления
-            const fuelToAddVolume = targetFuelVolume - initialFuelVolume;
-            
-            // Проверка на отрицательный объем
-            if (fuelToAddVolume < 0 || ethanolToAddVolume < 0) {
-                setError(
-                    "Невозможно достичь целевого объема с заданными параметрами. Уменьшите процент присадок или измените другие параметры."
-                );
+            // Проверка на корректность ввода
+            if (
+                initialVol.lte(0) ||
+                currentEthanol.lt(0) ||
+                targetEthanol.lt(0) ||
+                ethanolPure.lte(0) ||
+                additives.lt(0)
+            ) {
+                setError("Все значения должны быть положительными.");
+                setResult(null);
+                return;
+            }
+            if (
+                currentEthanol.gt(100) ||
+                targetEthanol.gt(100) ||
+                ethanolPure.gt(100) ||
+                additives.gt(100)
+            ) {
+                setError("Значения процентов не могут превышать 100.");
                 setResult(null);
                 return;
             }
 
-            // Результаты
-            setResult({
-                ethanolToAddVolume: ethanolToAddVolume.toFixed(2),
-                fuelToAddVolume: fuelToAddVolume.toFixed(2),
-            });
-        } else {
-            // Если итоговый объем не указан
-            if (targetEthanol > currentEthanol) {
-                // Повышение концентрации этанола -> добавляем спирт
-                const ethanolNeededMass =
-                    (initialVol * (targetEthanol - currentEthanol)) /
-                    (100 - targetEthanol);
-                const ethanolToAddVolume =
-                    ethanolNeededMass / ((ethanolPure / 100) * 0.789); // Плотность этанола ~0.789
+            setError(""); // Очищаем ошибку, если данные корректны
 
+            // Если итоговый объем указан
+            if (!targetVol.isZero()) {
+                const fuelFactor = new Decimal(1)
+                    .plus(additives.div(100))
+                    .plus(
+                        targetEthanol
+                            .mul(new Decimal(200).minus(ethanolPure))
+                            .div(new Decimal(100).mul(new Decimal(100).minus(targetEthanol)))
+                    );
+
+                // Целевой объем чистого бензина
+                const targetPureFuelVolume = targetVol.div(fuelFactor);
+
+                // Целевой объем чистого этанола
+                const targetPureEthanolVolume = targetEthanol
+                    .mul(targetPureFuelVolume)
+                    .div(new Decimal(100).minus(targetEthanol));
+
+                // Целевой объем бензина (с учетом присадок)
+                const targetFuelVolume = targetPureFuelVolume
+                    .mul(additives.div(100).plus(1));
+
+                // Целевой объем этанола (с учетом чистоты спирта)
+                const targetEthanolVolume = targetPureEthanolVolume
+                    .mul(new Decimal(2).minus(ethanolPure.div(100)));
+
+                // Исходные объемы
+                const initialPureFuelVolume = initialVol.div(
+                    new Decimal(1)
+                        .plus(additives.div(100))
+                        .plus(
+                            currentEthanol
+                                .mul(new Decimal(200).minus(ethanolPure))
+                                .div(new Decimal(100).mul(new Decimal(100).minus(currentEthanol)))
+                        )
+                );
+
+
+                const initialPureEthanolVolume = currentEthanol
+                    .mul(initialPureFuelVolume)
+                    .div(new Decimal(100).minus(currentEthanol));
+
+                const initialFuelVolume = initialPureFuelVolume
+                    .mul(additives.div(100).plus(1));
+
+                const initialEthanolVolume = initialPureEthanolVolume
+                    .mul(new Decimal(2).minus(ethanolPure.div(100)));
+
+                // Необходимый объем этанола для добавления
+                const ethanolToAddVolume = targetEthanolVolume.minus(initialEthanolVolume);
+
+                // Объем бензина для добавления
+                const fuelToAddVolume = targetFuelVolume.minus(initialFuelVolume);
+
+                // Проверка на отрицательный объем
+                if (fuelToAddVolume.lt(0) || ethanolToAddVolume.lt(0)) {
+                    setError(
+                        "Невозможно достичь целевого объема с заданными параметрами. Уменьшите процент присадок или измените другие параметры."
+                    );
+                    setResult(null);
+                    return;
+                }
+
+
+                // Результаты
                 setResult({
                     ethanolToAddVolume: ethanolToAddVolume.toFixed(2),
-                    fuelToAddVolume: "0.00", // Бензин не добавляется
-                });
-            } else if (targetEthanol < currentEthanol) {
-                // Понижение концентрации этанола -> добавляем бензин
-                const pureFuelToAddVolume =
-                    (initialVol * (currentEthanol - targetEthanol)) / targetEthanol;
-
-                const fuelToAddVolume = pureFuelToAddVolume * 100 / (100 - additives);
-                setResult({
-                    ethanolToAddVolume: "0.00", // Спирт не добавляется
                     fuelToAddVolume: fuelToAddVolume.toFixed(2),
                 });
             } else {
-                // Концентрация не меняется
-                setResult({
-                    ethanolToAddVolume: "0.00",
-                    fuelToAddVolume: "0.00",
-                });
+                // Исходная смесь
+                const initialPureFuelVolume = initialVol.div(
+                    new Decimal(1)
+                        .plus(additives.div(100))
+                        .plus(
+                            currentEthanol
+                                .mul(new Decimal(200).minus(ethanolPure))
+                                .div(new Decimal(100).mul(new Decimal(100).minus(currentEthanol)))
+                        )
+                );
+
+
+                const initialPureEthanolVolume = currentEthanol
+                    .mul(initialPureFuelVolume)
+                    .div(new Decimal(100).minus(currentEthanol));
+
+                const initialFuelVolume = initialPureFuelVolume
+                    .mul(additives.div(100).plus(1));
+                
+
+                // Расчет добавляемых компонентов
+                if (targetEthanol.gt(currentEthanol)) {
+                    // Повышение концентрации -> добавляем спирт
+                    // Целевая смесь
+                    const targetPureEthanolVolume = initialPureFuelVolume.mul(
+                        targetEthanol.div(new Decimal(100).minus(targetEthanol)));
+
+                    const ethanolToAddVolume = targetPureEthanolVolume
+                        .minus(initialPureEthanolVolume)
+                        .div(ethanolPure.div(100));
+                    setResult({
+                        ethanolToAddVolume: ethanolToAddVolume.toFixed(2),
+                        fuelToAddVolume: "0.00",
+                    });
+                } else if (targetEthanol.lt(currentEthanol)) {
+                    // Понижение концентрации -> добавляем топливо
+                    const targetPureFuelVolume = initialPureEthanolVolume.mul(new Decimal(100).div(targetEthanol).minus(1));
+                    const targetFuelVolume = targetPureFuelVolume
+                        .mul(additives.div(100).plus(1));
+
+                    // Объем бензина для добавления
+                    const fuelToAddVolume = targetFuelVolume.minus(initialFuelVolume);
+
+                    // Результаты
+                    setResult({
+                        ethanolToAddVolume:  "0.00",
+                        fuelToAddVolume: fuelToAddVolume.toFixed(2),
+                    });
+                } else {
+                    // Концентрация не меняется
+                    setResult({
+                        ethanolToAddVolume: "0.00",
+                        fuelToAddVolume: "0.00",
+                    });
+                }
             }
-        }
-    };
-   
-    useEffect(() => {
+        };
+
         calculateResults();
     }, [initialVolume, currentEthanolPercent, targetVolume, targetEthanolPercent, ethanolPurity, additivesPercent]);
     return (
         <ThemeProvider theme={theme}>
             {/* CssBaseline обеспечивает базовые стили для темы */}
-            <CssBaseline />
-            <Container  sx={{ mt: 5 }}>
+            <CssBaseline/>
+            <Container sx={{mt: 5}}>
                 <Paper
                     elevation={3}
                     sx={{
                         p: 4,
                         borderRadius: 8,
-                        backgroundColor: theme.palette.secondary.main,
-                        color: theme.palette.primary.main,
                     }}
                 >
                     <Box textAlign="center" mb={3}>
@@ -205,7 +266,7 @@ function App() {
 
                     {/* Вывод сообщения об ошибке */}
                     {error && (
-                        <Alert severity="error" sx={{ mb: 3 }}>
+                        <Alert severity="error" sx={{mb: 3}}>
                             {error}
                         </Alert>
                     )}
@@ -213,7 +274,7 @@ function App() {
                     {/* Разделение формы на две части */}
                     <Grid container spacing={2}>
                         {/* Левая часть формы */}
-                        <Grid item size={{ xs: 12, md:12}}>
+                        <Grid item size={{xs: 12, md: 12}}>
                             <Typography variant="h6">Исходные параметры</Typography>
 
                             {/* Исходный объем смеси */}
@@ -274,7 +335,7 @@ function App() {
                         </Grid>
 
                         {/* Правая часть формы */}
-                        <Grid item size={{ xs: 12, md:12}}>
+                        <Grid item size={{xs: 12, md: 12}}>
                             <Typography variant="h6">Целевые параметры</Typography>
 
                             {/* Итоговый объем смеси (необязательный) */}
