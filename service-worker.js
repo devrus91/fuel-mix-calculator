@@ -1,5 +1,5 @@
 ﻿const CACHE_NAME = 'mix-calculator-v1';
-const urlsToCache = ['/', '/index.html', '/static/js/main.chunk.js'];
+const urlsToCache = ['/fuel-mix-calculator/', '/fuel-mix-calculator/index.html', '/fuel-mix-calculator/static/js/main.chunk.js'];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
