@@ -1,13 +1,14 @@
 {
   "files": {
     "main.css": "/fuel-mix-calculator/static/css/main.e6c13ad2.css",
-    "main.js": "/fuel-mix-calculator/static/js/main.02e316e3.js",
+    "main.js": "/fuel-mix-calculator/static/js/main.72d201bf.js",
     "index.html": "/fuel-mix-calculator/index.html",
+    "service-worker.js": "/fuel-mix-calculator/service-worker.js",
     "main.e6c13ad2.css.map": "/fuel-mix-calculator/static/css/main.e6c13ad2.css.map",
-    "main.02e316e3.js.map": "/fuel-mix-calculator/static/js/main.02e316e3.js.map"
+    "main.72d201bf.js.map": "/fuel-mix-calculator/static/js/main.72d201bf.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.02e316e3.js"
+    "static/js/main.72d201bf.js"
   ]
 }
