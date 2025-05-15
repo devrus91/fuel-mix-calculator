@@ -1,5 +1,5 @@
 ﻿const CACHE_NAME = 'mix-calculator-v1';
-const urlsToCache = ['/fuel-mix-calculator/', '/fuel-mix-calculator/index.html', '/fuel-mix-calculator/static/js/main.02e316e3.js', '/fuel-mix-calculator/static/css/index.css', '/fuel-mix-calculator/static/css/main.e6c13ad2.css' , '/fuel-mix-calculator/static/js/index.js'];
+const urlsToCache = ['/fuel-mix-calculator/', '/fuel-mix-calculator/static/js/main.02e316e3.js', '/fuel-mix-calculator/static/css/main.e6c13ad2.css'];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
